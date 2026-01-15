@@ -6,6 +6,7 @@ import (
 	"opensqt/config"
 	"opensqt/logger"
 	"reflect"
+	"strings"
 	"time"
 )
 
@@ -120,10 +121,22 @@ func (r *Reconciler) Reconcile() error {
 
 	// 4. 计算本地持仓统计
 	var localTotal float64
-	var localPendingSellQty float64
+	var localPendingCloseQty float64
 	var localFilledPosition float64
-	var activeBuyOrders int
-	var activeSellOrders int
+	var activeOpenOrders int
+	var activeCloseOrders int
+
+	// 方向映射（单向持仓）
+	dir := strings.ToLower(strings.TrimSpace(r.cfg.Trading.Direction))
+	if dir == "" {
+		dir = "long"
+	}
+	openSide := "BUY"
+	closeSide := "SELL"
+	if dir == "short" {
+		openSide = "SELL"
+		closeSide = "BUY"
+	}
 
 	// 订单状态常量（与 position 包保持一致）
 	const (
@@ -165,16 +178,16 @@ func (r *Reconciler) Reconcile() error {
 
 		if positionStatus == PositionStatusFilled {
 			localFilledPosition += positionQty
-			if orderSide == "SELL" && (orderStatus == OrderStatusPlaced || orderStatus == OrderStatusConfirmed ||
+			if orderSide == closeSide && (orderStatus == OrderStatusPlaced || orderStatus == OrderStatusConfirmed ||
 				orderStatus == OrderStatusPartiallyFilled || orderStatus == OrderStatusCancelRequested) {
-				localPendingSellQty += positionQty
-				activeSellOrders++
+				localPendingCloseQty += positionQty
+				activeCloseOrders++
 			}
 		}
 
-		if orderSide == "BUY" && (orderStatus == OrderStatusPlaced || orderStatus == OrderStatusConfirmed ||
+		if orderSide == openSide && (orderStatus == OrderStatusPlaced || orderStatus == OrderStatusConfirmed ||
 			orderStatus == OrderStatusPartiallyFilled) {
-			activeBuyOrders++
+			activeOpenOrders++
 		}
 
 		return true
@@ -182,15 +195,15 @@ func (r *Reconciler) Reconcile() error {
 
 	localTotal = localFilledPosition
 
-	logger.Debug("📊 [对账统计] 本地持仓: %.4f, 挂单卖单: %d 个 (%.4f), 挂单买单: %d 个",
-		localTotal, activeSellOrders, localPendingSellQty, activeBuyOrders)
+	logger.Debug("📊 [对账统计] 本地持仓: %.4f, 挂单平仓单: %d 个 (%.4f, side=%s), 挂单开仓单: %d 个 (side=%s)",
+		localTotal, activeCloseOrders, localPendingCloseQty, closeSide, activeOpenOrders, openSide)
 
 	r.pm.IncrementReconcileCount()
 
 	// 5. 输出对账统计（从交易所接口获取基础币种，支持U本位和币本位合约）
 	baseCurrency := r.exchange.GetBaseAsset()
-	logger.Info("✅ [对账完成] 本地持仓: %.4f %s, 挂单卖单: %d 个 (%.4f), 挂单买单: %d 个",
-		localTotal, baseCurrency, activeSellOrders, localPendingSellQty, activeBuyOrders)
+	logger.Info("✅ [对账完成] 本地持仓: %.4f %s, 挂单平仓单: %d 个 (%.4f, side=%s), 挂单开仓单: %d 个 (side=%s)",
+		localTotal, baseCurrency, activeCloseOrders, localPendingCloseQty, closeSide, activeOpenOrders, openSide)
 
 	r.pm.UpdateLastReconcileTime(time.Now())
 

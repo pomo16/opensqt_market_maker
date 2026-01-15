@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -18,6 +19,7 @@ type Config struct {
 	Exchanges map[string]ExchangeConfig `yaml:"exchanges"`
 
 	Trading struct {
+		Direction             string  `yaml:"direction"` // long/short (单向持仓方向)，默认long
 		Symbol                string  `yaml:"symbol"`
 		PriceInterval         float64 `yaml:"price_interval"`
 		OrderQuantity         float64 `yaml:"order_quantity"`  // 每单购买金额（USDT/USDC）
@@ -120,6 +122,15 @@ func (c *Config) Validate() error {
 	// 验证手续费率配置
 	if exchangeCfg.FeeRate < 0 {
 		return fmt.Errorf("交易所 %s 的手续费率不能为负数", c.App.CurrentExchange)
+	}
+
+	// 交易方向（单向持仓）：默认long，允许 short
+	c.Trading.Direction = strings.ToLower(strings.TrimSpace(c.Trading.Direction))
+	if c.Trading.Direction == "" {
+		c.Trading.Direction = "long"
+	}
+	if c.Trading.Direction != "long" && c.Trading.Direction != "short" {
+		return fmt.Errorf("trading.direction 必须是 long 或 short，当前=%q", c.Trading.Direction)
 	}
 
 	if c.Trading.Symbol == "" {

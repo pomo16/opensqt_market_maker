@@ -44,6 +44,7 @@ exchanges:
 ####################################
 
 trading:
+  direction: "long"        # 交易方向: long(开多平多) / short(开空平空)；默认long
   symbol: "ETHUSDT"
   price_interval: 2         # 价格间隔（1美元）
   order_quantity: 30        # 每单购买金额（USDT/USDC）如 30 表示每单投入30U

@@ -248,8 +248,8 @@ func main() {
 			if isTriggered {
 				// 检测状态切换：从未触发 -> 触发（首次触发）
 				if !lastTriggered {
-					logger.Warn("🚨 [风控触发] 市场异常，正在撤销所有买单并暂停交易...")
-					superPositionManager.CancelAllBuyOrders() // 🔥 只撤销买单，保留卖单
+						logger.Warn("🚨 [风控触发] 市场异常，正在撤销所有开仓单并暂停交易...")
+						superPositionManager.CancelAllOpenOrders() // 🔥 只撤销开仓单，保留平仓单（direction=long/short）
 					lastTriggered = true
 				}
 				// 风控触发期间跳过后续下单逻辑

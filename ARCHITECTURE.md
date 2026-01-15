@@ -21,7 +21,7 @@
 ## 系统概述
 
 ### 系统定位
-OpenSQT 是一个**毫秒级高频加密货币做市商系统**，专注于永续合约市场的做多网格交易策略。
+OpenSQT 是一个**毫秒级高频加密货币做市商系统**，支持永续合约市场的单向网格交易策略（`long`/`short` 可配置）。
 
 ### 核心功能
 - ✅ 多交易所支持（Binance、Bitget、Gate.io）
@@ -194,7 +194,7 @@ priceChangeCh (channel)
 main.go 监听协程
     ↓
 风控检查 (RiskMonitor.IsTriggered)
-    ├── ❌ 触发 → 撤销所有买单，暂停交易
+    ├── ❌ 触发 → 撤销所有开仓单，暂停交易
     └── ✅ 正常 → SuperPositionManager.AdjustOrders()
 ```
 
@@ -368,7 +368,7 @@ OnOrderUpdate(update OrderUpdate)
 // 批量操作
 CreateBuyOrders(prices []float64)
 CreateSellOrders(prices []float64)
-CancelAllBuyOrders()
+CancelAllOpenOrders()
 ```
 
 #### 并发控制
@@ -484,7 +484,7 @@ type RiskMonitor struct {
 1. 实时监听多个币种的K线（如BTC、ETH）
 2. 计算成交量移动平均
 3. 检测当前成交量是否超过阈值（默认3倍）
-4. 触发风控 → 撤销所有买单，暂停交易
+4. 触发风控 → 撤销所有开仓单，暂停交易
 5. 恢复条件：多数币种恢复正常（默认3/5）
 
 **配置示例**:
@@ -782,7 +782,7 @@ RiskMonitor.IsTriggered() = true
     ↓
 main.go 价格监听协程检测
     ↓
-superPositionManager.CancelAllBuyOrders()
+superPositionManager.CancelAllOpenOrders()
     ↓
 暂停交易（跳过 AdjustOrders）
     ↓
