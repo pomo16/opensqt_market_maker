@@ -34,6 +34,7 @@ type KlineWebSocketManager struct {
 	callback       func(candle interface{})
 	symbols        []string
 	interval       string
+	testnet        bool
 	reconnectDelay time.Duration
 	pingInterval   time.Duration
 	pongWait       time.Duration
@@ -41,9 +42,10 @@ type KlineWebSocketManager struct {
 }
 
 // NewKlineWebSocketManager 创建K线WebSocket管理器
-func NewKlineWebSocketManager() *KlineWebSocketManager {
+func NewKlineWebSocketManager(testnet bool) *KlineWebSocketManager {
 	return &KlineWebSocketManager{
 		done:           make(chan struct{}),
+		testnet:        testnet,
 		reconnectDelay: 5 * time.Second,  // 重连延迟
 		pingInterval:   30 * time.Second, // Ping间隔
 		pongWait:       60 * time.Second, // Pong等待超时
@@ -87,7 +89,11 @@ func (k *KlineWebSocketManager) connectLoop(ctx context.Context) {
 		for i, symbol := range k.symbols {
 			streams[i] = fmt.Sprintf("%s@kline_%s", strings.ToLower(symbol), k.interval)
 		}
-		wsURL := fmt.Sprintf("wss://fstream.binance.com/stream?streams=%s", strings.Join(streams, "/"))
+		baseCombined := binanceFuturesCombinedMainUrl
+		if k.testnet {
+			baseCombined = binanceFuturesCombinedTestnetUrl
+		}
+		wsURL := fmt.Sprintf("%s%s", baseCombined, strings.Join(streams, "/"))
 
 		logger.Info("🔗 正在连接 Binance K线WebSocket...")
 

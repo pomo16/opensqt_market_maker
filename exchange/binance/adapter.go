@@ -111,6 +111,7 @@ type BinanceAdapter struct {
 	symbol           string
 	wsManager        *WebSocketManager
 	klineWSManager   *KlineWebSocketManager
+	testnet          bool
 	priceDecimals    int    // 价格精度（小数位数）
 	quantityDecimals int    // 数量精度（小数位数）
 	baseAsset        string // 基础资产（交易币种），如 BTC
@@ -121,22 +122,33 @@ type BinanceAdapter struct {
 func NewBinanceAdapter(cfg map[string]string, symbol string) (*BinanceAdapter, error) {
 	apiKey := cfg["api_key"]
 	secretKey := cfg["secret_key"]
+	testnet, _ := strconv.ParseBool(cfg["testnet"])
 
 	if apiKey == "" || secretKey == "" {
 		return nil, fmt.Errorf("Binance API 配置不完整")
 	}
 
+	// 切换 Binance USDT 合约测试网（go-binance futures 为包级全局开关）
+	futures.UseTestnet = testnet
+
 	client := futures.NewClient(apiKey, secretKey)
+	// 显式设置 REST BaseURL，避免未来 go-binance 行为变更导致不一致
+	if testnet {
+		client.SetApiEndpoint(futures.BaseApiTestnetUrl)
+	} else {
+		client.SetApiEndpoint(futures.BaseApiMainUrl)
+	}
 
 	// 同步服务器时间
 	client.NewSetServerTimeService().Do(context.Background())
 
-	wsManager := NewWebSocketManager(apiKey, secretKey)
+	wsManager := NewWebSocketManager(apiKey, secretKey, testnet)
 
 	adapter := &BinanceAdapter{
 		client:    client,
 		symbol:    symbol,
 		wsManager: wsManager,
+		testnet:   testnet,
 	}
 
 	// 获取合约信息（价格精度、数量精度等）
@@ -565,7 +577,7 @@ func (b *BinanceAdapter) StartPriceStream(ctx context.Context, symbol string, ca
 // StartKlineStream 启动K线流（WebSocket）
 func (b *BinanceAdapter) StartKlineStream(ctx context.Context, symbols []string, interval string, callback func(candle interface{})) error {
 	if b.klineWSManager == nil {
-		b.klineWSManager = NewKlineWebSocketManager()
+		b.klineWSManager = NewKlineWebSocketManager(b.testnet)
 	}
 	return b.klineWSManager.Start(ctx, symbols, interval, callback)
 }

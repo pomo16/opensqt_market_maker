@@ -38,6 +38,7 @@ func NewExchange(cfg *config.Config) (IExchange, error) {
 		cfgMap := map[string]string{
 			"api_key":    exchangeCfg.APIKey,
 			"secret_key": exchangeCfg.SecretKey,
+			"testnet":    fmt.Sprintf("%t", exchangeCfg.Testnet),
 		}
 		adapter, err := binance.NewBinanceAdapter(cfgMap, cfg.Trading.Symbol)
 		if err != nil {

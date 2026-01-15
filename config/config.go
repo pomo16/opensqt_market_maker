@@ -74,6 +74,7 @@ type ExchangeConfig struct {
 	SecretKey  string  `yaml:"secret_key"`
 	Passphrase string  `yaml:"passphrase"` // Bitget 需要
 	FeeRate    float64 `yaml:"fee_rate"`   // 手续费率（例如 0.0002 表示 0.02%）
+	Testnet    bool    `yaml:"testnet"`    // 是否连接测试网（Binance futures testnet 等），默认false
 }
 
 // LoadConfig 加载配置文件
